@@ -154,13 +154,13 @@
                                     
                                 @endphp
                                  @php
-                                    $maxSessions = max(array_column($allAPs, 'total'));
-                                    $size = ($ap['total'] / $maxSessions) * 150;
-                                    $size = max(min($size, 150), 30);
+                                    $maxSessions = 500; // Assume a max total of 900 for now
+                                    $size = ($ap['total'] / $maxSessions) * 350;
+                                    $size = max(min($size, 350), 30);
                                  @endphp
                                  style="top: {{ $ap['top'] }}%; left: {{ $ap['left'] }}%; 
                                         width: {{ $size }}px; height: {{ $size }}px; 
-                                        background: radial-gradient(circle, rgba(255, 0, 0, 0.8) 0%, rgba(255, 255, 0, 0.5) 100%);">
+                                        background: radial-gradient(circle, rgba(255, 69, 0, 0.8) 0%, rgba(255, 69, 0, 0.5) 50%, rgba(255, 69, 0, 0) 100%);">
                                     <span class="badge bg-dark">{{ $ap['total'] }}</span>
                             </div>
                         @endforeach
