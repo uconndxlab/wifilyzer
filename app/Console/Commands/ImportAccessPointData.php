@@ -50,7 +50,7 @@ class ImportAccessPointData extends Command
 
             // if rssi is less than -100, we'll skip it
 
-            if ($this->parseInteger($record['RSSI (dBm)']) < -100) {
+            if ($this->parseInteger($record['RSSI (dBm)']) < -70) {
                 $bar->advance();
                 continue;
             }
