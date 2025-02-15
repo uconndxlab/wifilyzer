@@ -105,7 +105,7 @@
             </div>
 
             <div class="row mb-4">
-                <div class="col-md-10 offset-1">
+                <div class="col-md-10 offset-md-1">
                     {{-- image with background of Hall4.jpg, width 100% background must be contained --}}
 
                     <div class="map">

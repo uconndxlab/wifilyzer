@@ -98,9 +98,12 @@ class DashboardController extends Controller
             ->orderBy('total', 'desc')
             ->first();
 
-        $mostActiveUser = [
+        $mostActiveUser = $mostActiveUser ? [
             'client_username_hash' => $mostActiveUser->client_username_hash,
             'total' => $mostActiveUser->total
+        ] : [
+            'client_username_hash' => "N/A",
+            'total' => 0
         ];
 
         $leastActiveUser = (clone $query)->select('client_username_hash', DB::raw('count(*) as total'))
