@@ -2,6 +2,7 @@
         body {
             background-color: #041e42;
             color: #f0f0f0;
+            font-family: 'Roboto', sans-serif;
         }
 
         /* table style */
@@ -52,7 +53,9 @@
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
         }
 
-
+        .navbar {
+            z-index: 9999;
+        }
 
 
         /* Flip card animation */
@@ -66,6 +69,11 @@
             transform: rotateY(180deg);
             animation: flipIn 0.6s forwards;
             animation-delay: calc(var(--card-index) * 0.25s);
+        }
+
+        /* remove all rounded corners on buttons and cards */
+        .btn, .card, .card-header, .badge{
+            border-radius: 0!important;
         }
 
         @keyframes flipIn {
