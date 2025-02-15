@@ -7,28 +7,37 @@
 
     <title>WiFi Usage Dashboard</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet">
+
+    {{-- some cool modern font --}}
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300&display=swap" rel="stylesheet">
     <link href={{ asset('css/style.css') }} rel="stylesheet">
     <script src="https://unpkg.com/htmx.org@1.9.2"></script>
 
 </head>
 
 <body hx-boost hx-target="#dashboard">
+
+    <nav class="navbar navbar-expand-lg navbar-light bg-light mb-4 position-sticky top-0 shadow-sm">
+        <div class="container-fluid">
+            <a href="{{ route('dashboard.index', ['start_date' => $previousWeekStartDate]) }}"
+                class="btn btn-primary @if ($isOldestWeek) disabled @endif d-none d-lg-inline">Previous Week</a>
+            <a href="{{ route('dashboard.index', ['start_date' => $previousWeekStartDate]) }}"
+                class="btn btn-primary @if ($isOldestWeek) disabled @endif d-lg-none"><i class="bi bi-arrow-left"></i></a>
+
+            <span class="navbar-text mx-auto h4 mb-0">Week of {{ $startDate }}</span>
+
+            <a href="{{ route('dashboard.index', ['start_date' => $nextWeekStartDate]) }}"
+                class="btn btn-primary @if ($isMostRecentWeek) disabled @endif d-none d-lg-inline">Next Week</a>
+            <a href="{{ route('dashboard.index', ['start_date' => $nextWeekStartDate]) }}"
+                class="btn btn-primary @if ($isMostRecentWeek) disabled @endif d-lg-none"><i class="bi bi-arrow-right"></i></a>
+        </div>
+    </nav>
+
     <div class="container mt-4">
         <h2 class="mb-3">Hall 4th Floor</h2>
 
-        <div class="week-nav d-flex justify-content-between align-items-center mb-4 position-sticky top-0 bg-light p-2">
-            {{-- link to start_date = $previousWeekStartDate --}}
-            <a href="{{ route('dashboard.index', ['start_date' => $previousWeekStartDate]) }}"
-                class="btn btn-primary @if ($isOldestWeek) disabled @endif">Previous Week</a>
 
-            {{-- "Week of" in the center --}}
-            <h4 class="mb-0">Week of {{ $startDate }}</h4>
-
-            {{-- link to start_date = $nextWeekStartDate --}}
-            <a href="{{ route('dashboard.index', ['start_date' => $nextWeekStartDate]) }}"
-                class="btn btn-primary @if ($isMostRecentWeek) disabled @endif">Next Week</a>
-
-        </div>
 
 
 
