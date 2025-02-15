@@ -105,6 +105,63 @@
             </div>
 
             <div class="row mb-4">
+                <div class="col-md-10 offset-1">
+                    {{-- image with background of Hall4.jpg, width 100% background must be contained --}}
+
+                    <div class="map">
+                        <img src="{{ asset('Hall4.png') }}" alt="Hall 4th Floor" class="img-fluid">
+                        @foreach ($allAPs as $ap)
+                            <div class="heatmap-circle" title="{{ $ap['ap_name'] }}: {{ $ap['total'] }} sessions"
+                                {{-- set top and left based on AP name --}}
+                                @php
+
+                                switch ($ap['ap_name']) {
+                                    case 'HALL-406-STRS':
+                                        $ap['top'] = 26;
+                                        $ap['left'] = 21;
+                                        break;
+                                    case 'HALL-409hall-STRS':
+                                        $ap['top'] = 38;
+                                        $ap['left'] = 34;
+                                        break;
+                                    case 'HALL-416hall-STRS':
+                                        $ap['top'] = 38;
+                                        $ap['left'] = 66;
+                                        break;
+                                    
+                                    case 'HALL-418-STRS':
+                                        $ap['top'] = 23;
+                                        $ap['left'] = 87;
+                                        break;
+                                    case 'HALL-421hall-STRS':
+                                        $ap['top'] = 65;
+                                        $ap['left'] = 86;
+                                        break;
+                                    case 'HALL-C4A.E05-STRS':
+                                        $ap['top'] = 60;
+                                        $ap['left'] = 12;
+                                        break;
+                                }
+                                    
+                                @endphp
+                                 @php
+                                    $maxSessions = max(array_column($allAPs, 'total'));
+                                    $size = ($ap['total'] / $maxSessions) * 150;
+                                    $size = max(min($size, 150), 30);
+                                 @endphp
+                                 style="top: {{ $ap['top'] }}%; left: {{ $ap['left'] }}%; 
+                                        width: {{ $size }}px; height: {{ $size }}px; 
+                                        background: radial-gradient(circle, rgba(255, 0, 0, 0.8) 0%, rgba(255, 255, 0, 0.5) 100%);">
+                                    <span class="badge bg-dark">{{ $ap['total'] }}</span>
+                            </div>
+                        @endforeach
+                    </div>
+                    
+                </div>
+            </div>
+
+
+            <div class="row mb-4">
                 <div class="col-md-12">
                     <!-- Other Info -->
                     <div class="card shadow-lg">
@@ -148,59 +205,6 @@
                             </dl>
                         </div>
                     </div>
-                </div>
-            </div>
-            <div class="row mb-4">
-                <div class="col-md-10 offset-1">
-                    {{-- image with background of Hall4.jpg, width 100% background must be contained --}}
-
-                    <div class="map">
-                        <img src="{{ asset('Hall4.png') }}" alt="Hall 4th Floor" class="img-fluid">
-                        @foreach ($allAPs as $ap)
-                            <div class="heatmap-circle" title="{{ $ap['ap_name'] }}: {{ $ap['total'] }} sessions"
-                                {{-- set top and left based on AP name --}}
-                                @php
-
-                                switch ($ap['ap_name']) {
-                                    case 'HALL-406-STRS':
-                                        $ap['top'] = 26;
-                                        $ap['left'] = 21;
-                                        break;
-                                    case 'HALL-409hall-STRS':
-                                        $ap['top'] = 38;
-                                        $ap['left'] = 34;
-                                        break;
-                                    case 'HALL-416hall-STRS':
-                                        $ap['top'] = 38;
-                                        $ap['left'] = 66;
-                                        break;
-                                    
-                                    case 'HALL-418-STRS':
-                                        $ap['top'] = 23;
-                                        $ap['left'] = 87;
-                                        break;
-                                    case 'HALL-421hall-STRS':
-                                        $ap['top'] = 65;
-                                        $ap['left'] = 86;
-                                        break;
-                                    case 'HALL-C4A.E05-STRS':
-                                        $ap['top'] = 60;
-                                        $ap['left'] = 12;
-                                        break;
-                                }
-                                    
-                                @endphp
-                                 @php
-                                    $size = max(min($ap['total'] * 2, 200), 30);
-                                 @endphp
-                                 style="top: {{ $ap['top'] }}%; left: {{ $ap['left'] }}%; 
-                                        width: {{ $size }}px; height: {{ $size }}px; 
-                                        background: radial-gradient(circle, rgba(255, 0, 0, 0.8) 0%, rgba(255, 255, 0, 0.5) 100%);">
-                                    <span class="badge bg-dark">{{ $ap['total'] }}</span>
-                            </div>
-                        @endforeach
-                    </div>
-                    
                 </div>
             </div>
 
