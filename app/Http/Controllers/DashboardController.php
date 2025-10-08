@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use App\Models\AccessPointSession as WifiSession;
 use App\Models\Building;
 use App\Models\Floor;
+use App\Models\AccessPointPosition;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Storage;
@@ -445,6 +446,24 @@ class DashboardController extends Controller
             })
             ->toArray();
 
+        // Add position data to access points
+        $positions = AccessPointPosition::where('floor_id', $floorModel->id)
+            ->get()
+            ->keyBy('ap_name');
+
+        foreach ($allAPs as &$ap) {
+            if (isset($positions[$ap['ap_name']])) {
+                $position = $positions[$ap['ap_name']];
+                $ap['x_percentage'] = $position->x_percentage;
+                $ap['y_percentage'] = $position->y_percentage;
+                $ap['positioned'] = true;
+            } else {
+                $ap['x_percentage'] = null;
+                $ap['y_percentage'] = null;
+                $ap['positioned'] = false;
+            }
+        }
+
 
 
 
@@ -484,5 +503,58 @@ class DashboardController extends Controller
             'buildingModel',
             'floorModel'
         ));
+    }
+
+    public function storeAccessPointPosition(Request $request, Building $building, Floor $floor)
+    {
+        try {
+            \Log::info('Position request received', [
+                'building_id' => $building->id,
+                'floor_id' => $floor->id,
+                'request_data' => $request->all()
+            ]);
+
+            $request->validate([
+                'ap_name' => 'required|string',
+                'x_percentage' => 'required|numeric|min:0|max:100',
+                'y_percentage' => 'required|numeric|min:0|max:100',
+            ]);
+
+            $position = AccessPointPosition::updateOrCreate(
+                [
+                    'floor_id' => $floor->id,
+                    'ap_name' => $request->ap_name,
+                ],
+                [
+                    'x_percentage' => $request->x_percentage,
+                    'y_percentage' => $request->y_percentage,
+                ]
+            );
+
+            \Log::info('Position saved successfully', ['position' => $position->toArray()]);
+
+            if ($request->expectsJson() || $request->wantsJson()) {
+                return response()->json(['success' => true, 'message' => 'Access point position saved successfully!']);
+            }
+
+            return redirect()->back()->with('success', 'Access point position saved successfully!');
+
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            \Log::error('Validation error in position storage', ['errors' => $e->errors()]);
+            
+            if ($request->expectsJson() || $request->wantsJson()) {
+                return response()->json(['success' => false, 'message' => 'Validation failed', 'errors' => $e->errors()], 422);
+            }
+            
+            return redirect()->back()->withErrors($e->errors())->withInput();
+        } catch (\Exception $e) {
+            \Log::error('Error saving position', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+            
+            if ($request->expectsJson() || $request->wantsJson()) {
+                return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+            }
+            
+            return redirect()->back()->with('error', 'Error saving position: ' . $e->getMessage());
+        }
     }
 }

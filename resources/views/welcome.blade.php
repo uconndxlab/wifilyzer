@@ -125,25 +125,77 @@
 
             <div class="row mb-4">
                 <div class="col-md-10 offset-md-1">
-                    {{-- image with background of Hall4.jpg, width 100% background must be contained --}}
+                    {{-- Setup Mode Toggle --}}
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h5>{{ $buildingModel->name }} - {{ $floorModel->name }} Floor Plan</h5>
+                        <button id="setupModeToggle" class="btn btn-outline-primary">
+                            <i class="bi bi-gear"></i> Setup Mode
+                        </button>
+                    </div>
+                    
+                    {{-- Setup Mode Instructions --}}
+                    <div id="setupInstructions" class="alert alert-info" style="display: none;">
+                        <strong>Setup Mode Active:</strong> Click anywhere on the map to position an access point, or click on an existing access point (highlighted with yellow border) to reposition it.
+                    </div>
 
-                    <div class="map {{ $floorModel->map_css_class }}">
-                        <img src="{{ asset($floorModel->map_image_path) }}" alt="{{ $buildingModel->name }} {{ $floorModel->name }}" class="img-fluid">
+                    <div class="map {{ $floorModel->map_css_class }}" id="floorMap" style="position: relative; cursor: default;">
+                        <img src="{{ asset($floorModel->map_image_path) }}" alt="{{ $buildingModel->name }} {{ $floorModel->name }}" class="img-fluid" id="mapImage">
+                        
                         @foreach ($allAPs as $ap)
-                            @php
-                                $maxSessions = 500; // Assume a max total for scaling
-                                $size = ($ap['total'] / $maxSessions) * 350;
-                                $size = max(min($size, 350), 30);
-                            @endphp
-                            <div class="heatmap-circle" 
-                                 title="{{ $ap['ap_name'] }}: {{ $ap['total'] }} sessions"
-                                 style="width: {{ $size }}px; height: {{ $size }}px; 
-                                        background: radial-gradient(circle, rgba(255, 69, 0, 0.8) 0%, rgba(255, 69, 0, 0.5) 50%, rgba(255, 69, 0, 0) 100%);">
-                                    <span class="badge bg-dark">{{ $ap['total'] }}</span>
-                            </div>
+                            @if($ap['positioned'])
+                                @php
+                                    $maxSessions = 500; // Assume a max total for scaling
+                                    $size = ($ap['total'] / $maxSessions) * 350;
+                                    $size = max(min($size, 350), 30);
+                                @endphp
+                                <div class="heatmap-circle positioned" 
+                                     title="{{ $ap['ap_name'] }}: {{ $ap['total'] }} sessions"
+                                     data-ap-name="{{ $ap['ap_name'] }}"
+                                     style="position: absolute; 
+                                            left: {{ $ap['x_percentage'] }}%; 
+                                            top: {{ $ap['y_percentage'] }}%; 
+                                            transform: translate(-50%, -50%);
+                                            width: {{ $size }}px; 
+                                            height: {{ $size }}px; 
+                                            background: radial-gradient(circle, rgba(255, 69, 0, 0.8) 0%, rgba(255, 69, 0, 0.5) 50%, rgba(255, 69, 0, 0) 100%);">
+                                        <span class="badge bg-dark">{{ $ap['total'] }}</span>
+                                </div>
+                            @endif
                         @endforeach
                     </div>
                     
+                    {{-- Unpositioned Access Points List --}}
+                    @php
+                        $unpositionedAPs = array_filter($allAPs, function($ap) { return !$ap['positioned']; });
+                    @endphp
+                    <div class="mt-3">
+                        @if(count($unpositionedAPs) > 0)
+                            <div class="alert alert-warning">
+                                <strong>Unpositioned Access Points:</strong>
+                                <div class="mt-2">
+                                    @foreach($unpositionedAPs as $ap)
+                                        <span class="badge bg-secondary me-2">{{ $ap['ap_name'] }} ({{ $ap['total'] }} sessions)</span>
+                                    @endforeach
+                                </div>
+                                <small class="d-block mt-2">Enable setup mode and click on the map to position these access points.</small>
+                            </div>
+                        @endif
+                        
+                        @php
+                            $positionedAPs = array_filter($allAPs, function($ap) { return $ap['positioned']; });
+                        @endphp
+                        @if(count($positionedAPs) > 0)
+                            <div class="alert alert-info">
+                                <strong>Positioned Access Points:</strong>
+                                <div class="mt-2">
+                                    @foreach($positionedAPs as $ap)
+                                        <span class="badge bg-success me-2">{{ $ap['ap_name'] }} ({{ $ap['total'] }} sessions)</span>
+                                    @endforeach
+                                </div>
+                                <small class="d-block mt-2">In setup mode, you can click on positioned access points to move them, or click anywhere on the map to position/reposition access points.</small>
+                            </div>
+                        @endif
+                    </div>
                 </div>
             </div>
 
@@ -264,6 +316,195 @@
 
 
     </div>
+
+    {{-- Access Point Selection Modal --}}
+    <div class="modal fade" id="apSelectionModal" tabindex="-1" aria-labelledby="apSelectionModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="apSelectionModalLabel">Select Access Point</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Which access point did you just click on?</p>
+                    <p class="text-muted small">Clicked position: <span id="clickedCoords"></span></p>
+                    <form id="positionForm">
+                        @csrf
+                        <div class="mb-3">
+                            <label for="apSelect" class="form-label">Access Point</label>
+                            <select class="form-select" id="apSelect" name="ap_name" required>
+                                <option value="">Choose an access point...</option>
+                                @foreach($allAPs as $ap)
+                                    <option value="{{ $ap['ap_name'] }}" data-sessions="{{ $ap['total'] }}" data-positioned="{{ $ap['positioned'] ? 'true' : 'false' }}">
+                                        {{ $ap['ap_name'] }} ({{ $ap['total'] }} sessions){{ $ap['positioned'] ? ' - Currently Positioned' : '' }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <input type="hidden" id="xPercentage" name="x_percentage">
+                        <input type="hidden" id="yPercentage" name="y_percentage">
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="savePosition">Save Position</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+    let setupMode = false;
+    
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log('DOM loaded, initializing positioning system...');
+        
+        const setupModeToggle = document.getElementById('setupModeToggle');
+        const setupInstructions = document.getElementById('setupInstructions');
+        const floorMap = document.getElementById('floorMap');
+        const mapImage = document.getElementById('mapImage');
+        const modal = new bootstrap.Modal(document.getElementById('apSelectionModal'));
+        const saveButton = document.getElementById('savePosition');
+        
+        console.log('Elements found:', {
+            setupModeToggle: !!setupModeToggle,
+            setupInstructions: !!setupInstructions,
+            floorMap: !!floorMap,
+            mapImage: !!mapImage,
+            saveButton: !!saveButton
+        });
+        
+        // Toggle setup mode
+        setupModeToggle.addEventListener('click', function() {
+            setupMode = !setupMode;
+            console.log('Setup mode toggled to:', setupMode);
+            
+            if (setupMode) {
+                setupModeToggle.classList.remove('btn-outline-primary');
+                setupModeToggle.classList.add('btn-primary');
+                setupModeToggle.innerHTML = '<i class="bi bi-gear-fill"></i> Setup Mode ON';
+                setupInstructions.style.display = 'block';
+                floorMap.style.cursor = 'crosshair';
+                floorMap.classList.add('setup-mode');
+            } else {
+                setupModeToggle.classList.remove('btn-primary');
+                setupModeToggle.classList.add('btn-outline-primary');
+                setupModeToggle.innerHTML = '<i class="bi bi-gear"></i> Setup Mode';
+                setupInstructions.style.display = 'none';
+                floorMap.style.cursor = 'default';
+                floorMap.classList.remove('setup-mode');
+            }
+        });
+        
+        // Map click handler
+        floorMap.addEventListener('click', function(e) {
+            console.log('Map clicked! Setup mode:', setupMode);
+            if (!setupMode) {
+                console.log('Setup mode is off, ignoring click');
+                return;
+            }
+            
+            // Check if we clicked on an existing access point
+            let clickedAP = null;
+            if (e.target.closest('.heatmap-circle.positioned')) {
+                clickedAP = e.target.closest('.heatmap-circle.positioned').getAttribute('data-ap-name');
+                console.log('Clicked on existing AP:', clickedAP);
+            }
+            
+            // Prevent event bubbling
+            e.preventDefault();
+            e.stopPropagation();
+            
+            // Get click coordinates relative to the image
+            const rect = mapImage.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            
+            console.log('Click coordinates:', { x, y, rect });
+            
+            // Convert to percentages
+            const xPercent = (x / rect.width) * 100;
+            const yPercent = (y / rect.height) * 100;
+            
+            console.log('Percentages:', { xPercent, yPercent });
+            
+            // Store coordinates
+            document.getElementById('xPercentage').value = xPercent.toFixed(2);
+            document.getElementById('yPercentage').value = yPercent.toFixed(2);
+            document.getElementById('clickedCoords').textContent = `${xPercent.toFixed(1)}%, ${yPercent.toFixed(1)}%`;
+            
+            // Pre-select the access point if we clicked on one
+            if (clickedAP) {
+                document.getElementById('apSelect').value = clickedAP;
+            } else {
+                document.getElementById('apSelect').value = '';
+            }
+            
+            // Show modal
+            console.log('Showing modal...');
+            modal.show();
+        });
+        
+        // Save position handler
+        saveButton.addEventListener('click', function() {
+            const apName = document.getElementById('apSelect').value;
+            const xPercentage = document.getElementById('xPercentage').value;
+            const yPercentage = document.getElementById('yPercentage').value;
+            
+            if (!apName) {
+                alert('Please select an access point');
+                return;
+            }
+            
+            // Prepare form data
+            const formData = new FormData();
+            formData.append('_token', document.querySelector('input[name="_token"]').value);
+            formData.append('ap_name', apName);
+            formData.append('x_percentage', xPercentage);
+            formData.append('y_percentage', yPercentage);
+            
+            // Send to server
+            console.log('Sending data:', { apName, xPercentage, yPercentage });
+            fetch('{{ route("dashboard.store.ap.position", [$buildingModel->id, $floorModel->id]) }}', {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
+                }
+            })
+            .then(response => {
+                console.log('Response status:', response.status);
+                console.log('Response headers:', response.headers);
+                return response.text().then(text => {
+                    console.log('Raw response:', text);
+                    try {
+                        return JSON.parse(text);
+                    } catch (e) {
+                        console.error('Failed to parse JSON:', e);
+                        throw new Error('Invalid JSON response: ' + text);
+                    }
+                });
+            })
+            .then(data => {
+                console.log('Parsed data:', data);
+                if (data.success) {
+                    // Reload page to show new position
+                    location.reload();
+                } else {
+                    alert('Error saving position: ' + (data.message || 'Unknown error'));
+                }
+            })
+            .catch(error => {
+                console.error('Full error:', error);
+                alert('Error saving position: ' + error.message);
+            });
+            
+            modal.hide();
+        });
+    });
+    </script>
 </body>
 
 </html>

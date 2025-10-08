@@ -97,7 +97,7 @@
                                             
                                             <div class="mb-3">
                                                 <small class="text-muted">
-                                                    <i class="bi bi-clock"></i> 
+                                                    
                                                     Most recent: 
                                                     @if($daysAgo == 0)
                                                         <span class="text-success fw-bold">Today</span>

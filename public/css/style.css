@@ -107,9 +107,7 @@
 
         .map {
             position: relative;
-            width: 100%;
-            height: 100%;
-            display:none;
+            width: 100%;           
         }
 
         .map img {
@@ -133,72 +131,6 @@
             transform-origin: center center;
         }
 
-        /* Default AP positioning for Hall 4th Floor */
-        .hall-4th-floor .heatmap-circle[title*="HALL-406-STRS"] {
-            top: 26% !important;
-            left: 21% !important;
-        }
-
-        .hall-4th-floor .heatmap-circle[title*="HALL-409hall-STRS"] {
-            top: 38% !important;
-            left: 34% !important;
-        }
-
-        .hall-4th-floor .heatmap-circle[title*="HALL-416hall-STRS"] {
-            top: 38% !important;
-            left: 66% !important;
-        }
-
-        .hall-4th-floor .heatmap-circle[title*="HALL-418-STRS"] {
-            top: 23% !important;
-            left: 87% !important;
-        }
-
-        .hall-4th-floor .heatmap-circle[title*="HALL-421hall-STRS"] {
-            top: 65% !important;
-            left: 86% !important;
-        }
-
-        .hall-4th-floor .heatmap-circle[title*="HALL-C4A.E05-STRS"] {
-            top: 60% !important;
-            left: 12% !important;
-        }
-
-        /* Tasker Basement AP positioning - customize these coordinates based on your floor map */
-        .tasker-basement .heatmap-circle[title*="TSK-C0B-STRS"] {
-            top: 30% !important;
-            left: 20% !important;
-        }
-
-        .tasker-basement .heatmap-circle[title*="TSK-001-STRS"] {
-            top: 45% !important;
-            left: 35% !important;
-        }
-
-        .tasker-basement .heatmap-circle[title*="TSK-033-STRS"] {
-            top: 60% !important;
-            left: 50% !important;
-        }
-
-        .tasker-basement .heatmap-circle[title*="TSK-020-STRS"] {
-            top: 30% !important;
-            left: 65% !important;
-        }
-
-        .tasker-basement .heatmap-circle[title*="TSK-015-STRS"] {
-            top: 45% !important;
-            left: 80% !important;
-        }
-
-        .tasker-basement .heatmap-circle[title*="TSK-012-STRS"] {
-            top: 75% !important;
-            left: 25% !important;
-        }
-
-        .tasker-basement .heatmap-circle[title*="TSK-028-STRS"] {
-            top: 75% !important;
-            left: 70% !important;
-        }
 
 
 
@@ -254,4 +186,58 @@
             background-size: 10% 10%;
             pointer-events: none;
             z-index: 1000;
+        }
+
+        /* Modal contrast fixes */
+        .modal-content {
+            background-color: #ffffff !important;
+            color: #041e42 !important;
+        }
+
+        .modal-header {
+            background-color: #f8f9fa !important;
+            color: #041e42 !important;
+            border-bottom: 1px solid #dee2e6 !important;
+        }
+
+        .modal-body {
+            background-color: #ffffff !important;
+            color: #041e42 !important;
+        }
+
+        .modal-footer {
+            background-color: #f8f9fa !important;
+            border-top: 1px solid #dee2e6 !important;
+        }
+
+        .modal-title {
+            color: #041e42 !important;
+        }
+
+        /* Form elements in modal */
+        .modal .form-label {
+            color: #041e42 !important;
+        }
+
+        .modal .form-select {
+            background-color: #ffffff !important;
+            color: #041e42 !important;
+            border: 1px solid #ced4da !important;
+        }
+
+        .modal .text-muted {
+            color: #6c757d !important;
+        }
+
+        /* Setup mode styles */
+        .setup-mode .heatmap-circle.positioned {
+            cursor: pointer !important;
+            border: 2px solid #ffc107;
+            box-shadow: 0 0 10px rgba(255, 193, 7, 0.5);
+        }
+
+        .setup-mode .heatmap-circle.positioned:hover {
+            border-color: #ff6b35;
+            box-shadow: 0 0 15px rgba(255, 107, 53, 0.7);
+            transform: translate(-50%, -50%) scale(1.1);
         }

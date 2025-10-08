@@ -54,9 +54,7 @@
                             <div class="col-md-6 mb-4">
                                 <div class="card h-100 shadow-lg building-card">
                                     <div class="card-body d-flex flex-column">
-                                        <div class="text-center mb-3">
-                                            <i class="bi bi-building display-1 text-primary"></i>
-                                        </div>
+
                                         <h5 class="card-title text-center">{{ $building->name }}</h5>
                                         <p class="card-text text-center text-muted mb-3">
                                             Code: <strong>{{ $building->code }}</strong>
@@ -83,7 +81,8 @@
                                             @if($building->most_recent_data)
                                                 @php
                                                     $mostRecentDate = \Carbon\Carbon::parse($building->most_recent_data);
-                                                    $daysAgo = $mostRecentDate->diffInDays(now());
+                                                    // force integer days (no decimal point)
+                                                    $daysAgo = (int) $mostRecentDate->diffInDays(now());
                                                 @endphp
                                                 <small class="text-muted">
                                                     <i class="bi bi-clock"></i> 
@@ -91,9 +90,9 @@
                                                     @if($daysAgo == 0)
                                                         <span class="text-success fw-bold">Today</span>
                                                     @elseif($daysAgo == 1)
-                                                        <span class="text-warning fw-bold">Yesterday</span>
+                                                        <span class="text-danger fw-bold">Yesterday</span>
                                                     @elseif($daysAgo <= 7)
-                                                        <span class="text-warning fw-bold">{{ $daysAgo }} days ago</span>
+                                                        <span class="text-danger fw-bold">{{ $daysAgo }} days ago</span>
                                                     @else
                                                         <span class="text-danger fw-bold">{{ $mostRecentDate->format('M j, Y') }}</span>
                                                     @endif

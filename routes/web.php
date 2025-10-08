@@ -25,6 +25,10 @@ Route::post('/buildings/{building}/floors', [DashboardController::class, 'storeF
 Route::get('/dashboard/{building}/{floor}', [DashboardController::class, 'index'])
     ->name('dashboard.building.floor');
 
+// Access point positioning routes
+Route::post('/dashboard/{building}/{floor}/position-ap', [DashboardController::class, 'storeAccessPointPosition'])
+    ->name('dashboard.store.ap.position');
+
 // Legacy route for backward compatibility
 Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard.index');
 Route::get('/dashboard/filter', [DashboardController::class, 'filter'])->name('dashboard.filter');

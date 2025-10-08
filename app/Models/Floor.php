@@ -26,4 +26,9 @@ class Floor extends Model
     {
         return $this->hasMany(AccessPointSession::class);
     }
+
+    public function accessPointPositions(): HasMany
+    {
+        return $this->hasMany(AccessPointPosition::class);
+    }
 }
