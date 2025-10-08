@@ -4,21 +4,44 @@ namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
 use App\Models\AccessPointSession;
+use App\Models\Building;
+use App\Models\Floor;
+use App\Models\ImportStatistic;
 use Carbon\Carbon;
 
 class ImportAccessPointData extends Command
 {
-    protected $signature = 'import:wifi-data {file}';
-    protected $description = 'Import WiFi access point data from a CSV file';
+    protected $signature = 'import:wifi-data {file} {building_code} {floor_number}';
+    protected $description = 'Import WiFi access point data from a CSV file for a specific building and floor';
 
     public function handle()
     {
         $filePath = $this->argument('file');
+        $buildingCode = $this->argument('building_code');
+        $floorNumber = (int) $this->argument('floor_number');
 
         if (!file_exists($filePath)) {
             $this->error("File not found: $filePath");
             return;
         }
+
+        // Find or create building
+        $building = Building::where('code', $buildingCode)->first();
+        if (!$building) {
+            $this->error("Building with code '{$buildingCode}' not found. Please create it first.");
+            return;
+        }
+
+        // Find or create floor
+        $floor = Floor::where('building_id', $building->id)
+            ->where('number', $floorNumber)
+            ->first();
+        if (!$floor) {
+            $this->error("Floor {$floorNumber} not found in building '{$buildingCode}'. Please create it first.");
+            return;
+        }
+
+        $this->info("Importing data for {$building->name}, Floor {$floor->number}");
 
         $handle = fopen($filePath, 'r');
 
@@ -38,19 +61,27 @@ class ImportAccessPointData extends Command
         $bar = $this->output->createProgressBar();
         $bar->start();
 
+        // Track filtering statistics
+        $totalRecords = 0;
+        $shortDurationFiltered = 0;
+        $weakSignalFiltered = 0;
+        $importedRecords = 0;
+
         while (($row = fgetcsv($handle, 30000, ",")) !== false) {
+            $totalRecords++;
             $record = array_combine($header, $row);
 
             // format of a session duration is like "1 min 0 sec" or "2 sec"
-            // if it's shorter than 5 minutes, we'll skip it
+            // if it's shorter than 1 minute, we'll skip it
             if (strpos($record['Session Duration'], 'min') === false) {
+                $shortDurationFiltered++;
                 $bar->advance();
                 continue;
             }
 
-            // if rssi is less than -100, we'll skip it
-
+            // if rssi is weaker than -70 dBm, we'll skip it
             if ($this->parseInteger($record['RSSI (dBm)']) < -70) {
+                $weakSignalFiltered++;
                 $bar->advance();
                 continue;
             }
@@ -62,6 +93,8 @@ class ImportAccessPointData extends Command
 
 
             AccessPointSession::create([
+                'building_id'            => $building->id,
+                'floor_id'               => $floor->id,
                 'client_username_hash'   => $record['Client Username Hash'] ?? null,
                 'client_affiliation'     => $record['Client Affiliation'] ?? null,
                 'client_ip_address'      => $record['Client IP Address'] ?? null,
@@ -78,11 +111,32 @@ class ImportAccessPointData extends Command
                 'rssi'                   => $this->parseInteger($record['RSSI (dBm)'] ?? null),
             ]);
 
+            $importedRecords++;
             $bar->advance();
         }
 
         fclose($handle);
         $bar->finish();
+        
+        // Save import statistics
+        ImportStatistic::create([
+            'building_id' => $building->id,
+            'floor_id' => $floor->id,
+            'total_records_processed' => $totalRecords,
+            'imported_records' => $importedRecords,
+            'short_duration_filtered' => $shortDurationFiltered,
+            'weak_signal_filtered' => $weakSignalFiltered,
+            'import_date' => now(),
+            'file_name' => basename($filePath),
+        ]);
+
+        // Display import statistics
+        $this->info("\n=== Import Statistics ===");
+        $this->info("Total records processed: " . number_format($totalRecords));
+        $this->info("Successfully imported: " . number_format($importedRecords));
+        $this->info("Filtered out (short duration < 1 min): " . number_format($shortDurationFiltered));
+        $this->info("Filtered out (weak signal < -70 dBm): " . number_format($weakSignalFiltered));
+        $this->info("Import rate: " . round(($importedRecords / $totalRecords) * 100, 1) . "%");
         $this->info("\nImport completed successfully!");
     }
 

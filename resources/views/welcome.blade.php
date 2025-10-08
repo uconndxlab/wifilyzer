@@ -20,22 +20,32 @@
 
     <nav class="navbar navbar-expand-lg navbar-light bg-light mb-4 position-sticky top-0 shadow-sm">
         <div class="container-fluid">
-            <a href="{{ route('dashboard.index', ['start_date' => $previousWeekStartDate]) }}"
-                class="btn btn-primary @if ($isOldestWeek) disabled @endif d-none d-lg-inline">Previous Week</a>
-            <a href="{{ route('dashboard.index', ['start_date' => $previousWeekStartDate]) }}"
-                class="btn btn-primary @if ($isOldestWeek) disabled @endif d-lg-none"><i class="bi bi-arrow-left"></i></a>
+            <div class="d-flex align-items-center">
+                <a href="{{ route('home') }}" class="btn btn-outline-secondary me-2" title="Home">
+                    <i class="bi bi-house"></i>
+                </a>
+                <a href="{{ route('floors.select', ['building' => $building]) }}" class="btn btn-outline-info me-3" title="Change Floor">
+                    <i class="bi bi-building"></i>
+                </a>
+                <a href="{{ route('dashboard.building.floor', ['building' => $building, 'floor' => $floor, 'start_date' => $previousWeekStartDate]) }}"
+                    class="btn btn-primary @if ($isOldestWeek) disabled @endif d-none d-lg-inline">Previous Week</a>
+                <a href="{{ route('dashboard.building.floor', ['building' => $building, 'floor' => $floor, 'start_date' => $previousWeekStartDate]) }}"
+                    class="btn btn-primary @if ($isOldestWeek) disabled @endif d-lg-none"><i class="bi bi-arrow-left"></i></a>
+            </div>
 
-            <span class="navbar-text mx-auto h4 mb-0">Week of {{ $startDate }}</span>
+            <span class="navbar-text mx-auto h4 mb-0">{{ $buildingModel->name }} - {{ $floorModel->name }} - Week of {{ $startDate }}</span>
 
-            <a href="{{ route('dashboard.index', ['start_date' => $nextWeekStartDate]) }}"
-                class="btn btn-primary @if ($isMostRecentWeek) disabled @endif d-none d-lg-inline">Next Week</a>
-            <a href="{{ route('dashboard.index', ['start_date' => $nextWeekStartDate]) }}"
-                class="btn btn-primary @if ($isMostRecentWeek) disabled @endif d-lg-none"><i class="bi bi-arrow-right"></i></a>
+            <div class="d-flex align-items-center">
+                <a href="{{ route('dashboard.building.floor', ['building' => $building, 'floor' => $floor, 'start_date' => $nextWeekStartDate]) }}"
+                    class="btn btn-primary @if ($isMostRecentWeek) disabled @endif d-none d-lg-inline">Next Week</a>
+                <a href="{{ route('dashboard.building.floor', ['building' => $building, 'floor' => $floor, 'start_date' => $nextWeekStartDate]) }}"
+                    class="btn btn-primary @if ($isMostRecentWeek) disabled @endif d-lg-none"><i class="bi bi-arrow-right"></i></a>
+            </div>
         </div>
     </nav>
 
     <div class="container mt-4">
-        <h2 class="mb-3">Hall 4th Floor</h2>
+        <h2 class="mb-3">{{ $buildingModel->name }} - {{ $floorModel->name }}</h2>
 
 
 
@@ -117,49 +127,17 @@
                 <div class="col-md-10 offset-md-1">
                     {{-- image with background of Hall4.jpg, width 100% background must be contained --}}
 
-                    <div class="map">
-                        <img src="{{ asset('Hall4.png') }}" alt="Hall 4th Floor" class="img-fluid">
+                    <div class="map {{ $floorModel->map_css_class }}">
+                        <img src="{{ asset($floorModel->map_image_path) }}" alt="{{ $buildingModel->name }} {{ $floorModel->name }}" class="img-fluid">
                         @foreach ($allAPs as $ap)
-                            <div class="heatmap-circle" title="{{ $ap['ap_name'] }}: {{ $ap['total'] }} sessions"
-                                {{-- set top and left based on AP name --}}
-                                @php
-
-                                switch ($ap['ap_name']) {
-                                    case 'HALL-406-STRS':
-                                        $ap['top'] = 26;
-                                        $ap['left'] = 21;
-                                        break;
-                                    case 'HALL-409hall-STRS':
-                                        $ap['top'] = 38;
-                                        $ap['left'] = 34;
-                                        break;
-                                    case 'HALL-416hall-STRS':
-                                        $ap['top'] = 38;
-                                        $ap['left'] = 66;
-                                        break;
-                                    
-                                    case 'HALL-418-STRS':
-                                        $ap['top'] = 23;
-                                        $ap['left'] = 87;
-                                        break;
-                                    case 'HALL-421hall-STRS':
-                                        $ap['top'] = 65;
-                                        $ap['left'] = 86;
-                                        break;
-                                    case 'HALL-C4A.E05-STRS':
-                                        $ap['top'] = 60;
-                                        $ap['left'] = 12;
-                                        break;
-                                }
-                                    
-                                @endphp
-                                 @php
-                                    $maxSessions = 500; // Assume a max total of 900 for now
-                                    $size = ($ap['total'] / $maxSessions) * 350;
-                                    $size = max(min($size, 350), 30);
-                                 @endphp
-                                 style="top: {{ $ap['top'] }}%; left: {{ $ap['left'] }}%; 
-                                        width: {{ $size }}px; height: {{ $size }}px; 
+                            @php
+                                $maxSessions = 500; // Assume a max total for scaling
+                                $size = ($ap['total'] / $maxSessions) * 350;
+                                $size = max(min($size, 350), 30);
+                            @endphp
+                            <div class="heatmap-circle" 
+                                 title="{{ $ap['ap_name'] }}: {{ $ap['total'] }} sessions"
+                                 style="width: {{ $size }}px; height: {{ $size }}px; 
                                         background: radial-gradient(circle, rgba(255, 69, 0, 0.8) 0%, rgba(255, 69, 0, 0.5) 50%, rgba(255, 69, 0, 0) 100%);">
                                     <span class="badge bg-dark">{{ $ap['total'] }}</span>
                             </div>
@@ -211,6 +189,38 @@
                                 <dt class="col-sm-3">Least Active User</dt>
                                 <dd class="col-sm-9">{{ $leastActiveUser['client_username_hash'] }}
                                     ({{ $leastActiveUser['total'] }} sessions)</dd>
+                            </dl>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Data Import Criteria -->
+            <div class="row mb-4">
+                <div class="col-md-12">
+                    <div class="card shadow-lg">
+                        <div class="card-header bg-info text-white">
+                            <h5 class="card-title"><i class="bi bi-funnel"></i> Data Import Filtering Criteria</h5>
+                        </div>
+                        <div class="card-body bg-light text-dark">
+                            <p class="mb-3">WiFi session data is filtered during import to ensure quality and relevance:</p>
+                            <dl class="row">
+                                <dt class="col-sm-3">Minimum Duration</dt>
+                                <dd class="col-sm-9">
+                                    <span class="badge bg-primary">≥ 1 minute</span>
+                                    <small class="text-muted d-block">Sessions shorter than 1 minute are excluded as they typically represent brief connections or authentication attempts.</small>
+                                </dd>
+
+                                <dt class="col-sm-3">Signal Strength</dt>
+                                <dd class="col-sm-9">
+                                    <span class="badge bg-success">≥ -70 dBm</span>
+                                    <small class="text-muted d-block">Weak signals below -70 dBm are excluded to focus on reliable connections with good signal quality.</small>
+                                </dd>
+
+                                <dt class="col-sm-3">Quality Threshold</dt>
+                                <dd class="col-sm-9">
+                                    <span class="text-muted">These filters help ensure the dashboard shows meaningful WiFi usage patterns rather than connection noise.</span>
+                                </dd>
                             </dl>
                         </div>
                     </div>
