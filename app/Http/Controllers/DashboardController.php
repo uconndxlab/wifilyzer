@@ -69,7 +69,8 @@ class DashboardController extends Controller
             'description' => 'nullable|string',
             'floor_number' => 'nullable|integer',
             'floor_name' => 'nullable|string|max:255',
-            'map_image_path' => 'nullable|string|max:255',
+            'map_image_file' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:10240', // 10MB max
+            'map_image_filename' => 'nullable|string|max:255',
             'map_css_class' => 'nullable|string|max:255',
         ]);
 
@@ -82,12 +83,24 @@ class DashboardController extends Controller
 
         // Create the first floor if provided
         if ($request->floor_number !== null) {
+            // Handle image upload for the floor
+            $mapImagePath = null;
+            if ($request->hasFile('map_image_file')) {
+                $uploadedFile = $request->file('map_image_file');
+                $filename = $request->map_image_filename ?: 
+                    strtolower($building->code) . '-floor-' . $request->floor_number . '.' . $uploadedFile->getClientOriginalExtension();
+                
+                // Store the image in public directory
+                $uploadedFile->move(public_path(), $filename);
+                $mapImagePath = $filename;
+            }
+
             Floor::create([
                 'building_id' => $building->id,
                 'name' => $request->floor_name ?: ($request->floor_number . ' Floor'),
                 'number' => $request->floor_number,
                 'description' => null,
-                'map_image_path' => $request->map_image_path,
+                'map_image_path' => $mapImagePath,
                 'map_css_class' => $request->map_css_class,
             ]);
         }
@@ -101,7 +114,8 @@ class DashboardController extends Controller
             'number' => 'required|integer',
             'name' => 'required|string|max:100',
             'description' => 'nullable|string|max:500',
-            'map_image_path' => 'nullable|string|max:255',
+            'map_image_file' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:10240', // 10MB max
+            'map_image_filename' => 'nullable|string|max:255',
             'map_css_class' => 'nullable|string|max:255',
         ]);
 
@@ -118,13 +132,25 @@ class DashboardController extends Controller
                 ->withInput();
         }
 
+        // Handle image upload
+        $mapImagePath = null;
+        if ($request->hasFile('map_image_file')) {
+            $uploadedFile = $request->file('map_image_file');
+            $filename = $request->map_image_filename ?: 
+                strtolower($building->code) . '-floor-' . $request->number . '.' . $uploadedFile->getClientOriginalExtension();
+            
+            // Store the image in public directory
+            $uploadedFile->move(public_path(), $filename);
+            $mapImagePath = $filename;
+        }
+
         // Create the new floor
         $floor = Floor::create([
             'building_id' => $building->id,
             'name' => $request->name,
             'number' => $request->number,
             'description' => $request->description,
-            'map_image_path' => $request->map_image_path,
+            'map_image_path' => $mapImagePath,
             'map_css_class' => $request->map_css_class,
         ]);
 
@@ -191,12 +217,55 @@ class DashboardController extends Controller
         // Store the uploaded file temporarily
         $uploadedFile = $request->file('csv_file');
         $fileName = time() . '_' . $uploadedFile->getClientOriginalName();
-        $filePath = $uploadedFile->storeAs('uploads', $fileName, 'local');
-        $fullPath = storage_path('app/' . $filePath);
+        
+        try {
+            // Store the file using Laravel's storage system - use public disk to avoid the private folder
+            $filePath = $uploadedFile->storeAs('uploads', $fileName, 'public');
+            $fullPath = storage_path('app/public/' . $filePath);
+
+            // Debug: Log file storage details
+            Log::info('File storage details', [
+                'original_name' => $uploadedFile->getClientOriginalName(),
+                'original_size' => $uploadedFile->getSize(),
+                'stored_filename' => $fileName,
+                'file_path' => $filePath,
+                'full_path' => $fullPath,
+                'file_stored_successfully' => file_exists($fullPath),
+                'file_size_after_storage' => file_exists($fullPath) ? filesize($fullPath) : 'N/A'
+            ]);
+
+            // Verify the file was stored successfully
+            if (!file_exists($fullPath)) {
+                Log::error('File was not stored successfully', [
+                    'expected_path' => $fullPath,
+                    'file_path_returned' => $filePath,
+                    'storage_path' => storage_path('app'),
+                    'is_valid_upload' => $uploadedFile->isValid(),
+                    'upload_error' => $uploadedFile->getError(),
+                    'upload_error_message' => $uploadedFile->getErrorMessage()
+                ]);
+                return back()->withErrors(['csv_file' => 'Failed to store uploaded file. Please try again.']);
+            }
+        } catch (\Exception $e) {
+            Log::error('Exception during file storage', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            return back()->withErrors(['csv_file' => 'Error storing file: ' . $e->getMessage()]);
+        }
 
         try {
+            // Debug: Log the command details
+            Log::info('About to call import command', [
+                'file' => $fullPath,
+                'building_code' => $request->building_code,
+                'floor_number' => $request->floor_number,
+                'file_exists' => file_exists($fullPath),
+                'file_size' => file_exists($fullPath) ? filesize($fullPath) : 'N/A'
+            ]);
+
             // Call the import command
-            Artisan::call('import:wifi-data', [
+            $exitCode = Artisan::call('import:wifi-data', [
                 'file' => $fullPath,
                 'building_code' => $request->building_code,
                 'floor_number' => $request->floor_number,
@@ -205,8 +274,15 @@ class DashboardController extends Controller
             // Get the command output
             $output = Artisan::output();
             
+            // Debug: Log the command results
+            Log::info('Import command completed', [
+                'exit_code' => $exitCode,
+                'output' => $output,
+                'output_length' => strlen($output)
+            ]);
+            
             // Clean up the uploaded file
-            Storage::disk('local')->delete($filePath);
+            Storage::disk('public')->delete($filePath);
 
             // Parse import statistics from output if available
             $importedCount = 0;
@@ -220,6 +296,13 @@ class DashboardController extends Controller
                 $totalCount = (int) str_replace(',', '', $matches[1]);
             }
 
+            // Debug: Log parsing results
+            Log::info('Parsed import results', [
+                'imported_count' => $importedCount,
+                'total_count' => $totalCount,
+                'raw_output' => $output
+            ]);
+
             $message = "WiFi data uploaded successfully! ";
             if ($importedCount > 0) {
                 $message .= "Imported {$importedCount} sessions";
@@ -227,6 +310,14 @@ class DashboardController extends Controller
                     $message .= " out of {$totalCount} total records";
                 }
                 $message .= ".";
+            } else {
+                // If no records were imported, include more details
+                $message .= "Command executed with exit code {$exitCode}. ";
+                if (trim($output)) {
+                    $message .= "Output: " . trim($output);
+                } else {
+                    $message .= "No output from import command.";
+                }
             }
 
             return redirect()->route('floors.select', ['building' => $request->building_code])
@@ -234,7 +325,14 @@ class DashboardController extends Controller
 
         } catch (\Exception $e) {
             // Clean up the uploaded file on error
-            Storage::disk('local')->delete($filePath);
+            if (isset($filePath)) {
+                Storage::disk('public')->delete($filePath);
+            }
+            
+            Log::error('Import command failed', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
             
             return back()->withErrors(['csv_file' => 'Error processing file: ' . $e->getMessage()]);
         }
@@ -286,21 +384,68 @@ class DashboardController extends Controller
 
         $totalSessions = $query->count();
 
-        if ($totalSessions == 0) {
+        // Check if there are any sessions at all for this building/floor (regardless of date range)
+        $totalSessionsOverall = WifiSession::where('building_id', $buildingModel->id)
+            ->where('floor_id', $floorModel->id)
+            ->count();
 
-            // If there are no sessions, redirect with the most recent date in the database for this building/floor
-            $mostRecentSession = WifiSession::where('building_id', $buildingModel->id)
-                ->where('floor_id', $floorModel->id)
-                ->orderBy('association_time', 'desc')
-                ->first();
-            $mostRecentDate = $mostRecentSession ? \Carbon\Carbon::parse($mostRecentSession->association_time)->format('Y-m-d') : now()->format('Y-m-d');
-
-            return redirect()->route('dashboard.building.floor', [
-                'building' => $building, 
-                'floor' => $floor, 
-                'start_date' => $mostRecentDate
+        if ($totalSessionsOverall == 0) {
+            // No sessions exist at all for this building/floor - show empty state
+            return view('welcome', [
+                'sessions' => collect([]),
+                'totalSessions' => 0,
+                'affiliations' => collect([]),
+                'uniqueUsers' => 0,
+                'mostActiveAP' => ['ap_name' => 'N/A', 'total' => 0],
+                'returningUsers' => 0,
+                'totalDevices' => 0,
+                'dateEarliest' => null,
+                'dateLatest' => null,
+                'averageSessionDuration' => 0,
+                'numberOfDaysReflectedInData' => 0,
+                'longestSession' => null,
+                'allAPs' => [],
+                'startDate' => $startDate,
+                'endDate' => $endDate,
+                'nextWeekStartDate' => $nextWeekStartDate,
+                'nextWeekEndDate' => $nextWeekEndDate,
+                'previousWeekStartDate' => $previousWeekStartDate,
+                'previousWeekEndDate' => $previousWeekEndDate,
+                'averageBytes' => 0,
+                'totalSessionThroughput' => 0,
+                'ssids' => [],
+                'users' => collect([]),
+                'mostActiveSSID' => ['ssid' => 'N/A', 'total' => 0],
+                'leastActiveSSID' => ['ssid' => 'N/A', 'total' => 0],
+                'mostActiveUser' => ['client_username_hash' => 'N/A', 'total' => 0],
+                'leastActiveUser' => ['client_username_hash' => 'N/A', 'total' => 0],
+                'leastActiveAP' => ['ap_name' => 'N/A', 'total' => 0],
+                'isMostRecentWeek' => true,
+                'isOldestWeek' => true,
+                'building' => $building,
+                'floor' => $floor,
+                'buildingModel' => $buildingModel,
+                'floorModel' => $floorModel,
+                'noDataMessage' => 'No WiFi session data has been imported for this building and floor yet.'
             ]);
-            
+        }
+
+        if ($totalSessions == 0) {
+            // Sessions exist for this building/floor but not in the current date range
+            // Redirect to the most recent week with data (avoid infinite redirect)
+            if (!$request->has('start_date')) {
+                $mostRecentSession = WifiSession::where('building_id', $buildingModel->id)
+                    ->where('floor_id', $floorModel->id)
+                    ->orderBy('association_time', 'desc')
+                    ->first();
+                $mostRecentDate = $mostRecentSession ? \Carbon\Carbon::parse($mostRecentSession->association_time)->format('Y-m-d') : now()->format('Y-m-d');
+
+                return redirect()->route('dashboard.building.floor', [
+                    'building' => $building, 
+                    'floor' => $floor, 
+                    'start_date' => $mostRecentDate
+                ]);
+            }
         }
 
         $sessions = (clone $query)->get();

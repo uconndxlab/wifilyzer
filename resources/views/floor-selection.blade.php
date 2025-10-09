@@ -273,7 +273,7 @@
                     </h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
-                <form action="{{ route('dashboard.building.floor.store', $building->code) }}" method="POST">
+                <form action="{{ route('dashboard.building.floor.store', $building->code) }}" method="POST" enctype="multipart/form-data">
                     @csrf
                     <div class="modal-body">
                         <div class="mb-3">
@@ -295,9 +295,15 @@
                         </div>
                         
                         <div class="mb-3">
-                            <label for="mapImagePath" class="form-label fw-bold text-dark">Floor Map Image Path</label>
-                            <input type="text" class="form-control" id="mapImagePath" name="map_image_path" placeholder="e.g., Hall4.png">
-                            <div class="form-text text-muted">Optional: Path to floor map image in public directory</div>
+                            <label for="mapImageFile" class="form-label fw-bold text-dark">Floor Map Image</label>
+                            <input type="file" class="form-control" id="mapImageFile" name="map_image_file" accept="image/*">
+                            <div class="form-text text-muted">Optional: Upload floor map image (PNG, JPG, etc.)</div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="mapImageFilename" class="form-label fw-bold text-dark">Image Filename</label>
+                            <input type="text" class="form-control" id="mapImageFilename" name="map_image_filename" placeholder="e.g., hall-4th-floor.png">
+                            <div class="form-text text-muted">Optional: Custom filename for the uploaded image (will auto-generate if empty)</div>
                         </div>
                         
                         <div class="mb-3">
@@ -456,6 +462,40 @@
                 uploadBtn.disabled = true;
                 uploadBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> Processing...';
             });
+            
+            // Image upload functionality for Add Floor modal
+            const mapImageFileInput = document.getElementById('mapImageFile');
+            const mapImageFilenameInput = document.getElementById('mapImageFilename');
+            const floorNumberInput = document.getElementById('floorNumber');
+            
+            function updateFloorImageFilename() {
+                const buildingCode = '{{ $building->code }}'.toLowerCase();
+                const floorNumber = floorNumberInput.value;
+                
+                if (buildingCode && floorNumber && mapImageFileInput.files.length > 0 && !mapImageFilenameInput.value) {
+                    const file = mapImageFileInput.files[0];
+                    const extension = file.name.split('.').pop();
+                    mapImageFilenameInput.value = `${buildingCode}-floor-${floorNumber}.${extension}`;
+                }
+            }
+            
+            // Update filename when floor number changes
+            if (floorNumberInput) {
+                floorNumberInput.addEventListener('input', updateFloorImageFilename);
+            }
+            
+            // Update filename when file is selected
+            if (mapImageFileInput) {
+                mapImageFileInput.addEventListener('change', function() {
+                    updateFloorImageFilename();
+                    
+                    // Show preview info
+                    if (this.files.length > 0) {
+                        const file = this.files[0];
+                        console.log('Selected floor image:', file.name, 'Size:', (file.size / 1024 / 1024).toFixed(2) + ' MB');
+                    }
+                });
+            }
         });
     </script>
 </body>

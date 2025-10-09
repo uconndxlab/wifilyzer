@@ -306,8 +306,17 @@
                 @endforeach
             </div>
         @else
-            <div class="alert alert-danger" role="alert">
-                No data available for the selected date range: {{ $startDate }} to {{ $endDate }}
+            <div class="alert alert-warning" role="alert">
+                @if(isset($noDataMessage))
+                    <h4><i class="bi bi-database-slash"></i> No Data Available</h4>
+                    <p>{{ $noDataMessage }}</p>
+                    <p>To import WiFi data for this building and floor, use:</p>
+                    <code>php artisan import:wifi-data file.csv {{ $building }} {{ $floor }}</code>
+                @else
+                    <h4><i class="bi bi-calendar-x"></i> No Data for Selected Date Range</h4>
+                    <p>No data available for the selected date range: <strong>{{ $startDate }}</strong> to <strong>{{ $endDate }}</strong></p>
+                    <p>Try selecting a different date range or check if data has been imported for this building and floor.</p>
+                @endif
             </div>
 
         @endif

@@ -151,7 +151,7 @@
                     </h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
-                <form action="{{ route('buildings.store') }}" method="POST">
+                <form action="{{ route('buildings.store') }}" method="POST" enctype="multipart/form-data">
                     @csrf
                     <div class="modal-body">
                         <div class="row">
@@ -196,13 +196,18 @@
                                 </div>
                             </div>
                         </div>
+                        <div class="mb-3">
+                            <label for="mapImageFile" class="form-label">Floor Map Image</label>
+                            <input type="file" class="form-control" id="mapImageFile" name="map_image_file" accept="image/*">
+                            <div class="form-text">Optional: Upload floor map image (PNG, JPG, etc.)</div>
+                        </div>
                         <div class="row">
                             <div class="col-md-6">
                                 <div class="mb-3">
-                                    <label for="mapImage" class="form-label">Map Image</label>
-                                    <input type="text" class="form-control" id="mapImage" name="map_image_path" 
-                                           placeholder="e.g., floor1-map.png">
-                                    <div class="form-text">Place image in public/ folder</div>
+                                    <label for="mapImageFilename" class="form-label">Image Filename</label>
+                                    <input type="text" class="form-control" id="mapImageFilename" name="map_image_filename" 
+                                           placeholder="e.g., sci-floor-1.png">
+                                    <div class="form-text">Custom filename for uploaded image</div>
                                 </div>
                             </div>
                             <div class="col-md-6">
@@ -305,6 +310,35 @@
                 } else {
                     nameField.value = number + 'th Floor';
                 }
+            }
+            updateImageFilename();
+        });
+        
+        // Auto-generate image filename
+        function updateImageFilename() {
+            const buildingCode = document.getElementById('buildingCode').value.toLowerCase();
+            const floorNumber = document.getElementById('floorNumber').value;
+            const filenameField = document.getElementById('mapImageFilename');
+            const fileInput = document.getElementById('mapImageFile');
+            
+            if (buildingCode && floorNumber && fileInput.files.length > 0 && !filenameField.value) {
+                const file = fileInput.files[0];
+                const extension = file.name.split('.').pop();
+                filenameField.value = `${buildingCode}-floor-${floorNumber}.${extension}`;
+            }
+        }
+        
+        // Update filename when building code changes
+        document.getElementById('buildingCode').addEventListener('input', updateImageFilename);
+        
+        // Update filename when file is selected
+        document.getElementById('mapImageFile').addEventListener('change', function() {
+            updateImageFilename();
+            
+            // Show preview info
+            if (this.files.length > 0) {
+                const file = this.files[0];
+                console.log('Selected file:', file.name, 'Size:', (file.size / 1024 / 1024).toFixed(2) + ' MB');
             }
         });
     </script>
